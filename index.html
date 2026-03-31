@@ -1,29 +1,106 @@
-<html>
+<!DOCTYPE html>
+<html lang="es">
 <head>
-    <title>Smart Kitchen</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Kitchen Pro v35.0</title>
     <link rel="stylesheet" href="style.css">
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Set default date
-            document.getElementById('date').value = new Date().toISOString().split('T')[0];
-        });
-
-        function toggleClearButton(input) {
-            const clearButton = document.getElementById('clear-btn');
-            clearButton.style.display = input.value ? 'block' : 'none';
-        }
-
-        function clearInput() {
-            const input = document.getElementById('search-input');
-            input.value = '';
-            toggleClearButton(input);
-        }
-    </script>
 </head>
 <body>
-    <input type="date" id="date">
-    <input type="text" id="search-input" onchange="toggleClearButton(this)">
-    <button id="clear-btn" style="display:none;" onclick="clearInput()">Clear</button>
-    <h1>Welcome to Smart Kitchen</h1>
+    <header>
+        <h1>❄️ Smart Kitchen Pro</h1>
+        <div class="search-container">
+            <div class="search-box">
+                <input type="text" id="buscador" placeholder="🔍 Buscar producto o nota..." oninput="actualizarVista()" autocomplete="off">
+                <button id="btn-borrar-filtro" onclick="borrarFiltro()">✕</button>
+            </div>
+        </div>
+    </header>
+
+    <section class="formulario card">
+        <input type="hidden" id="edit-id">
+        <div class="input-grid">
+            <div class="input-group">
+                <label>Producto</label>
+                <input type="text" id="nombre" list="lista-sugerencias" placeholder="Ej: Merluza" oninput="verificarCategoriaAuto()">
+                <datalist id="lista-sugerencias"></datalist>
+            </div>
+            <div class="input-group">
+                <label>Categoría</label>
+                <select id="categoria">
+                    <option value="Generales">Generales</option>
+                    <option value="Lácteos">Lácteos</option>
+                    <option value="Carnes/Pescados">Carnes/Pescados</option>
+                    <option value="Fruta/Verdura">Fruta/Verdura</option>
+                    <option value="Bebidas">Bebidas</option>
+                    <option value="Congelados">Congelados</option>
+                    <option value="Limpieza">Limpieza</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Cantidad</label>
+                <div class="qty-universal-ctrl">
+                    <button type="button" onclick="cambiarCantForm(-1)">−</button>
+                    <input type="number" id="cantidad" value="1" min="1">
+                    <button type="button" onclick="cambiarCantForm(1)">+</button>
+                </div>
+            </div>
+            <div class="input-group">
+                <label id="label-fecha">Fecha</label>
+                <input type="date" id="fecha">
+            </div>
+            <div class="input-group">
+                <label>Ubicación</label>
+                <select id="ubicacion" onchange="actualizarLabelFecha()">
+                    <option value="frigorifico">Frigorífico</option>
+                    <option value="congelador">Congelador</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-actions">
+            <button id="btn-principal" class="btn-add" onclick="procesarFormulario()">Añadir Producto</button>
+            <button id="btn-cancelar" class="btn-cancel" style="display:none;" onclick="cancelarEdicion()">✕ Cancelar</button>
+            <button class="btn-db" onclick="guardarEnCatalogo()" title="Memorizar categoría">💾</button>
+        </div>
+    </section>
+
+    <main class="contenedor-listas">
+        <section class="card">
+            <h2>❄️ Frigorífico</h2>
+            <ul id="lista-frigorifico" class="lista"></ul>
+        </section>
+        <section class="card">
+            <h2>🧊 Congelador</h2>
+            <ul id="lista-congelador" class="lista"></ul>
+        </section>
+        <section class="card">
+            <h2>🛒 Lista Compra</h2>
+            <div class="add-compra-rapido">
+                <input type="text" id="input-compra-manual" placeholder="Añadir extra..." onkeypress="if(event.key==='Enter') añadirManualACompra()">
+                <button onclick="añadirManualACompra()">+</button>
+            </div>
+            <ul id="lista-compra" class="lista"></ul>
+        </section>
+    </main>
+
+    <div class="footer-actions">
+        <div id="stats-content" class="stats-badge">Cargando...</div>
+        <button class="btn-share" onclick="compartirWhatsApp()">📲 WhatsApp Inventario</button>
+        <button class="btn-share-buy" onclick="compartirWhatsAppCompra()">🛒 WhatsApp Compra</button>
+    </div>
+
+    <section class="card settings-card">
+        <h3>⚙️ Copias de Seguridad</h3>
+        <div class="settings-grid">
+            <button class="btn-settings" onclick="exportarCopiaSeguridad()">📥 Exportar</button>
+            <button class="btn-settings" onclick="document.getElementById('importFile').click()">📤 Importar</button>
+            <input type="file" id="importFile" style="display:none" onchange="validarYPrevisualizar(event)">
+            <button id="btn-confirmar-import" class="btn-confirm" style="display:none;" onclick="ejecutarRestauracion()">✅ Confirmar Importación</button>
+            <button class="btn-danger-soft" onclick="borrarTodo()">🗑️ Reset App</button>
+        </div>
+    </section>
+
+    <script src="script.js"></script>
 </body>
 </html>
+
