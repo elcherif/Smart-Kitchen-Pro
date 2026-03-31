@@ -75,8 +75,10 @@ function añadirManualACompra() {
 
 // --- 4. TRASVASE (MOVER CON CANTIDAD +/-) ---
 function abrirTransferencia(id) {
+    const item = inventario.find(i => i.id === id);
+    if (!item) return;
     itemEnTransferencia = id;
-    cantidadATransferir = inventario.find(i => i.id === id).cantidad;
+    cantidadATransferir = item.cantidad;
     actualizarVista();
 }
 
@@ -128,8 +130,22 @@ function procesarFormulario() {
 function verificarCategoriaAuto() {
     const n = document.getElementById('nombre').value.trim();
     const nLower = n.toLowerCase();
-    if (catalogoObj[n]) document.getElementById('categoria').value = catalogoObj[n];
-    else for (let p in PRODUCTOS_BASE) if (nLower === p.toLowerCase()) document.getElementById('categoria').value = PRODUCTOS_BASE[p];
+    
+    // Buscar en catálogo (case-insensitive)
+    for (let key in catalogoObj) {
+        if (key.toLowerCase() === nLower) {
+            document.getElementById('categoria').value = catalogoObj[key];
+            return;
+        }
+    }
+    
+    // Buscar en base de productos
+    for (let p in PRODUCTOS_BASE) {
+        if (nLower === p.toLowerCase()) {
+            document.getElementById('categoria').value = PRODUCTOS_BASE[p];
+            return;
+        }
+    }
 }
 
 function completarCompra(nombreItem) {
@@ -292,6 +308,10 @@ function actualizarVista() {
     });
     
     document.getElementById('stats-content').innerText = `Stock: ${inventario.length} | Compra: ${listaCompra.length}`;
+    
+    // Mostrar/ocultar botón de filtro según haya texto
+    const hasFilter = document.getElementById('buscador').value.trim().length > 0;
+    document.getElementById('btn-borrar-filtro').style.display = hasFilter ? 'inline-block' : 'none';
 }
 
 function guardarYActualizar() {
@@ -310,11 +330,13 @@ function renderCatalogo() {
 
 function prepararEdicion(id) {
     const p = inventario.find(i => i.id === id);
+    if (!p) return;
     document.getElementById('edit-id').value = p.id;
     document.getElementById('nombre').value = p.nombre;
     document.getElementById('cantidad').value = p.cantidad;
     document.getElementById('categoria').value = p.categoria;
     document.getElementById('ubicacion').value = p.ubicacion;
+    document.getElementById('fecha').value = p.fecha;
     document.getElementById('btn-principal').innerText = "Guardar Cambios";
     document.getElementById('btn-cancelar').style.display = "inline-block";
     window.scrollTo(0,0);
@@ -323,6 +345,10 @@ function prepararEdicion(id) {
 function cancelarEdicion() {
     document.getElementById('edit-id').value = "";
     document.getElementById('nombre').value = "";
+    document.getElementById('cantidad').value = "1";
+    document.getElementById('categoria').value = "Generales";
+    document.getElementById('ubicacion').value = "frigorifico";
+    document.getElementById('fecha').value = new Date().toISOString().split('T')[0];
     document.getElementById('btn-principal').innerText = "Añadir Producto";
     document.getElementById('btn-cancelar').style.display = "none";
 }
@@ -343,9 +369,11 @@ function compartirWhatsAppCompra() {
 function exportarCopiaSeguridad() {
     const blob = new Blob([JSON.stringify({ inventario, listaCompra, catalogo: catalogoObj })], { type: 'application/json' });
     const a = document.createElement('a'); 
-    a.href = URL.createObjectURL(blob); 
-    a.download = `Cocina_Backup.json`; 
+    const url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = `Cocina_Backup_${new Date().toISOString().slice(0,10)}.json`;
     a.click();
+    URL.revokeObjectURL(url); // Limpiar referencia
 }
 
 // ISSUE #3: Falta validación de JSON
@@ -364,11 +392,18 @@ function validarYPrevisualizar(e) {
 }
 
 function ejecutarRestauracion() {
+    // Validar que existan datos temporales
+    if (!window.datosTemp || !window.datosTemp.inventario) {
+        alert('Error: No hay datos temporales válidos para restaurar');
+        return;
+    }
+    
     inventario = window.datosTemp.inventario; 
-    listaCompra = window.datosTemp.listaCompra; 
-    catalogoObj = window.datosTemp.catalogo;
+    listaCompra = window.datosTemp.listaCompra || []; 
+    catalogoObj = window.datosTemp.catalogo || {};
     guardarYActualizar(); 
     document.getElementById('btn-confirmar-import').style.display = 'none';
+    window.datosTemp = null; // Limpiar datos temporales
 }
 
 function borrarTodo() { 
@@ -396,6 +431,10 @@ function guardarEnCatalogo() {
     } 
 }
 
-// INICIO APP
-renderCatalogo();
-actualizarVista();
+// Inicializar fecha actual al cargar
+document.addEventListener('DOMContentLoaded', () => {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('fecha').value = today;
+    renderCatalogo();
+    actualizarVista();
+});
