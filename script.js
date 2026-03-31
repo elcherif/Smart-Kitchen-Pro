@@ -42,19 +42,30 @@ function modCantInv(id, v) {
 
 // --- 3. GESTIÓN DE CANTIDADES (COMPRA) ---
 function modCantCompra(nombre, v) {
-    const item = listaCompra.find(i => i.nombre === nombre);
+    const nombreLower = nombre.toLowerCase();
+    const item = listaCompra.find(i => i.nombre.toLowerCase() === nombreLower);
     if (item) {
         item.cantidad += v;
-        if (item.cantidad <= 0) listaCompra = listaCompra.filter(i => i.nombre !== nombre);
+        if (item.cantidad <= 0) listaCompra = listaCompra.filter(i => i.nombre.toLowerCase() !== nombreLower);
         guardarYActualizar();
     }
+}
+
+// ISSUE #4: Función faltante - añadirACompra()
+function añadirACompra(nombre, cantidad) {
+    const nombreLower = nombre.toLowerCase();
+    const existe = listaCompra.find(i => i.nombre.toLowerCase() === nombreLower);
+    if (existe) existe.cantidad += cantidad;
+    else listaCompra.push({ nombre: nombre, cantidad });
+    guardarYActualizar();
 }
 
 function añadirManualACompra() {
     const input = document.getElementById('input-compra-manual');
     const nombre = input.value.trim();
     if (nombre) {
-        const existe = listaCompra.find(i => i.nombre.toLowerCase() === nombre.toLowerCase());
+        const nombreLower = nombre.toLowerCase();
+        const existe = listaCompra.find(i => i.nombre.toLowerCase() === nombreLower);
         if (existe) existe.cantidad += 1;
         else listaCompra.push({ nombre: nombre, cantidad: 1 });
         input.value = "";
@@ -107,7 +118,8 @@ function procesarFormulario() {
     if (idEd) inventario[inventario.findIndex(x => x.id == idEd)] = p;
     else {
         inventario.push(p);
-        listaCompra = listaCompra.filter(i => i.nombre.toLowerCase() !== nombre.toLowerCase());
+        const nombreLower = nombre.toLowerCase();
+        listaCompra = listaCompra.filter(i => i.nombre.toLowerCase() !== nombreLower);
     }
     guardarYActualizar();
     cancelarEdicion();
@@ -115,8 +127,9 @@ function procesarFormulario() {
 
 function verificarCategoriaAuto() {
     const n = document.getElementById('nombre').value.trim();
+    const nLower = n.toLowerCase();
     if (catalogoObj[n]) document.getElementById('categoria').value = catalogoObj[n];
-    else for (let p in PRODUCTOS_BASE) if (n.toLowerCase() === p.toLowerCase()) document.getElementById('categoria').value = PRODUCTOS_BASE[p];
+    else for (let p in PRODUCTOS_BASE) if (nLower === p.toLowerCase()) document.getElementById('categoria').value = PRODUCTOS_BASE[p];
 }
 
 function completarCompra(nombreItem) {
@@ -138,51 +151,146 @@ function actualizarVista() {
     inventario.filter(p => p.nombre.toLowerCase().includes(filtro)).forEach(p => {
         const li = document.createElement('li');
         const esMoviendo = itemEnTransferencia === p.id;
-        li.innerHTML = `
-            <div class="linea-principal">
-                <div class="item-info"><strong>${obtenerEmoji(p.nombre)} ${p.nombre}</strong><br><small>${p.fecha}</small></div>
-                <div class="qty-universal-ctrl">
-                    <button onclick="modCantInv(${p.id},-1)">−</button>
-                    <span>${p.cantidad}</span>
-                    <button onclick="modCantInv(${p.id},1)">+</button>
-                </div>
-            </div>
-            ${esMoviendo ? `
-                <div class="transfer-panel">
-                    <span style="font-size:0.8rem; font-weight:bold;">TRASPASAR:</span>
-                    <div class="qty-universal-ctrl">
-                        <button onclick="modCantTransfer(-1)">−</button>
-                        <span>${cantidadATransferir}</span>
-                        <button onclick="modCantTransfer(1)">+</button>
-                    </div>
-                    <button class="btn-accion btn-confirm-move" onclick="ejecutarTransferencia()">Mover ✅</button>
-                    <button class="btn-accion" onclick="itemEnTransferencia=null; actualizarVista()">✕</button>
-                </div>
-            ` : `
-                <div class="linea-principal" style="margin-top:5px">
-                    <button class="btn-accion" onclick="abrirTransferencia(${p.id})">⇄ ${p.ubicacion==='frigorifico'?'Congelar':'Descongelar'}</button>
-                    <button class="btn-accion" onclick="prepararEdicion(${p.id})">✏️</button>
-                </div>
-            `}`;
+        
+        const div = document.createElement('div');
+        div.className = 'linea-principal';
+        
+        const itemInfo = document.createElement('div');
+        itemInfo.className = 'item-info';
+        itemInfo.innerHTML = `<strong>${obtenerEmoji(p.nombre)} ${p.nombre}</strong><br><small>${p.fecha}</small>`;
+        
+        const qtyCtrl = document.createElement('div');
+        qtyCtrl.className = 'qty-universal-ctrl';
+        
+        const btnMinus = document.createElement('button');
+        btnMinus.textContent = '−';
+        btnMinus.addEventListener('click', () => modCantInv(p.id, -1));
+        
+        const qtySpan = document.createElement('span');
+        qtySpan.textContent = p.cantidad;
+        
+        const btnPlus = document.createElement('button');
+        btnPlus.textContent = '+';
+        btnPlus.addEventListener('click', () => modCantInv(p.id, 1));
+        
+        qtyCtrl.appendChild(btnMinus);
+        qtyCtrl.appendChild(qtySpan);
+        qtyCtrl.appendChild(btnPlus);
+        
+        div.appendChild(itemInfo);
+        div.appendChild(qtyCtrl);
+        li.appendChild(div);
+        
+        if (esMoviendo) {
+            const transferPanel = document.createElement('div');
+            transferPanel.className = 'transfer-panel';
+            
+            const label = document.createElement('span');
+            label.style.fontSize = '0.8rem';
+            label.style.fontWeight = 'bold';
+            label.textContent = 'TRASPASAR:';
+            
+            const qtyTransfer = document.createElement('div');
+            qtyTransfer.className = 'qty-universal-ctrl';
+            
+            const btnMinusT = document.createElement('button');
+            btnMinusT.textContent = '−';
+            btnMinusT.addEventListener('click', () => modCantTransfer(-1));
+            
+            const qtySpanT = document.createElement('span');
+            qtySpanT.textContent = cantidadATransferir;
+            
+            const btnPlusT = document.createElement('button');
+            btnPlusT.textContent = '+';
+            btnPlusT.addEventListener('click', () => modCantTransfer(1));
+            
+            qtyTransfer.appendChild(btnMinusT);
+            qtyTransfer.appendChild(qtySpanT);
+            qtyTransfer.appendChild(btnPlusT);
+            
+            const btnConfirm = document.createElement('button');
+            btnConfirm.className = 'btn-accion btn-confirm-move';
+            btnConfirm.textContent = 'Mover ✅';
+            btnConfirm.addEventListener('click', () => ejecutarTransferencia());
+            
+            const btnCancel = document.createElement('button');
+            btnCancel.className = 'btn-accion';
+            btnCancel.textContent = '✕';
+            btnCancel.addEventListener('click', () => { itemEnTransferencia = null; actualizarVista(); });
+            
+            transferPanel.appendChild(label);
+            transferPanel.appendChild(qtyTransfer);
+            transferPanel.appendChild(btnConfirm);
+            transferPanel.appendChild(btnCancel);
+            li.appendChild(transferPanel);
+        } else {
+            const div2 = document.createElement('div');
+            div2.className = 'linea-principal';
+            div2.style.marginTop = '5px';
+            
+            const btnTransfer = document.createElement('button');
+            btnTransfer.className = 'btn-accion';
+            btnTransfer.textContent = `⇄ ${p.ubicacion === 'frigorifico' ? 'Congelar' : 'Descongelar'}`;
+            btnTransfer.addEventListener('click', () => abrirTransferencia(p.id));
+            
+            const btnEdit = document.createElement('button');
+            btnEdit.className = 'btn-accion';
+            btnEdit.textContent = '✏️';
+            btnEdit.addEventListener('click', () => prepararEdicion(p.id));
+            
+            div2.appendChild(btnTransfer);
+            div2.appendChild(btnEdit);
+            li.appendChild(div2);
+        }
+        
         lists[p.ubicacion].appendChild(li);
     });
 
     listaCompra.filter(i => i.nombre.toLowerCase().includes(filtro)).forEach(i => {
         const li = document.createElement('li');
-        li.innerHTML = `
-            <div class="linea-principal">
-                <span>🛒 ${i.nombre}</span>
-                <div class="linea-principal" style="gap:10px">
-                    <div class="qty-universal-ctrl">
-                        <button onclick="modCantCompra('${i.nombre}',-1)">−</button>
-                        <span>${i.cantidad}</span>
-                        <button onclick="modCantCompra('${i.nombre}',1)">+</button>
-                    </div>
-                    <button class="btn-accion" onclick="completarCompra('${i.nombre}')">✅</button>
-                </div>
-            </div>`;
+        
+        const div1 = document.createElement('div');
+        div1.className = 'linea-principal';
+        
+        const span = document.createElement('span');
+        span.textContent = `🛒 ${i.nombre}`;
+        
+        const div2 = document.createElement('div');
+        div2.className = 'linea-principal';
+        div2.style.gap = '10px';
+        
+        const qtyCtrl = document.createElement('div');
+        qtyCtrl.className = 'qty-universal-ctrl';
+        
+        const btnMinus = document.createElement('button');
+        btnMinus.textContent = '−';
+        btnMinus.addEventListener('click', () => modCantCompra(i.nombre, -1));
+        
+        const qtySpan = document.createElement('span');
+        qtySpan.textContent = i.cantidad;
+        
+        const btnPlus = document.createElement('button');
+        btnPlus.textContent = '+';
+        btnPlus.addEventListener('click', () => modCantCompra(i.nombre, 1));
+        
+        qtyCtrl.appendChild(btnMinus);
+        qtyCtrl.appendChild(qtySpan);
+        qtyCtrl.appendChild(btnPlus);
+        
+        const btnCheck = document.createElement('button');
+        btnCheck.className = 'btn-accion';
+        btnCheck.textContent = '✅';
+        btnCheck.addEventListener('click', () => completarCompra(i.nombre));
+        
+        div2.appendChild(qtyCtrl);
+        div2.appendChild(btnCheck);
+        
+        div1.appendChild(span);
+        div1.appendChild(div2);
+        li.appendChild(div1);
         lists.compra.appendChild(li);
     });
+    
     document.getElementById('stats-content').innerText = `Stock: ${inventario.length} | Compra: ${listaCompra.length}`;
 }
 
@@ -225,30 +333,69 @@ function compartirWhatsApp() {
     inventario.forEach(p => m += `• ${obtenerEmoji(p.nombre)} ${p.nombre} (${p.cantidad})\n`);
     window.open(`https://wa.me/?text=${encodeURIComponent(m)}`);
 }
+
 function compartirWhatsAppCompra() {
     let m = "🛒 *LISTA COMPRA*\n";
     listaCompra.forEach(i => m += `• ${i.nombre} (${i.cantidad})\n`);
     window.open(`https://wa.me/?text=${encodeURIComponent(m)}`);
 }
+
 function exportarCopiaSeguridad() {
     const blob = new Blob([JSON.stringify({ inventario, listaCompra, catalogo: catalogoObj })], { type: 'application/json' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Cocina_Backup.json`; a.click();
+    const a = document.createElement('a'); 
+    a.href = URL.createObjectURL(blob); 
+    a.download = `Cocina_Backup.json`; 
+    a.click();
 }
+
+// ISSUE #3: Falta validación de JSON
 function validarYPrevisualizar(e) {
     const reader = new FileReader();
-    reader.onload = (ev) => { window.datosTemp = JSON.parse(ev.target.result); document.getElementById('btn-confirmar-import').style.display = 'inline-block'; };
+    reader.onload = (ev) => { 
+        try {
+            window.datosTemp = JSON.parse(ev.target.result); 
+            document.getElementById('btn-confirmar-import').style.display = 'inline-block'; 
+        } catch (err) {
+            alert('El archivo no es un backup válido.');
+            console.error('Error al parsear JSON:', err);
+        }
+    };
     reader.readAsText(e.target.files[0]);
 }
+
 function ejecutarRestauracion() {
-    inventario = window.datosTemp.inventario; listaCompra = window.datosTemp.listaCompra; catalogoObj = window.datosTemp.catalogo;
-    guardarYActualizar(); document.getElementById('btn-confirmar-import').style.display = 'none';
+    inventario = window.datosTemp.inventario; 
+    listaCompra = window.datosTemp.listaCompra; 
+    catalogoObj = window.datosTemp.catalogo;
+    guardarYActualizar(); 
+    document.getElementById('btn-confirmar-import').style.display = 'none';
 }
-function borrarTodo() { if(confirm("¿Seguro que quieres borrarlo todo?")) { localStorage.clear(); location.reload(); } }
-function borrarFiltro() { document.getElementById('buscador').value = ""; actualizarVista(); }
-function actualizarLabelFecha() { document.getElementById('label-fecha').innerText = document.getElementById('ubicacion').value === 'frigorifico' ? 'F. Caducidad' : 'F. Congelación'; }
-function guardarEnCatalogo() { const n = document.getElementById('nombre').value.trim(); if(n) { catalogoObj[n] = document.getElementById('categoria').value; guardarYActualizar(); alert("Aprendido!"); } }
+
+function borrarTodo() { 
+    if(confirm("¿Seguro que quieres borrarlo todo?")) { 
+        localStorage.clear(); 
+        location.reload(); 
+    } 
+}
+
+function borrarFiltro() { 
+    document.getElementById('buscador').value = ""; 
+    actualizarVista(); 
+}
+
+function actualizarLabelFecha() { 
+    document.getElementById('label-fecha').innerText = document.getElementById('ubicacion').value === 'frigorifico' ? 'F. Caducidad' : 'F. Congelación'; 
+}
+
+function guardarEnCatalogo() { 
+    const n = document.getElementById('nombre').value.trim(); 
+    if(n) { 
+        catalogoObj[n] = document.getElementById('categoria').value; 
+        guardarYActualizar(); 
+        alert("Aprendido!"); 
+    } 
+}
 
 // INICIO APP
 renderCatalogo();
 actualizarVista();
-
